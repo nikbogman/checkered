@@ -1,8 +1,39 @@
 <script>
     import { onMount } from "svelte";
-    import { findTileSize, findRowsCount } from "./functions";
     import GiAbstract080 from "svelte-icons/gi/GiAbstract080.svelte";
 
+    function findColumnProps(totalWidth, minCount, maxCount) {
+        if (totalWidth === 0) {
+            // probably should return something else
+            return {
+                width: 0,
+                count: 0,
+                totalWidth: 0,
+            };
+        }
+        for (let count = minCount; count <= maxCount; count++) {
+            if (totalWidth % count === 0) {
+                return {
+                    width: totalWidth / count,
+                    count,
+                    totalWidth,
+                };
+            }
+        }
+        return findColumnProps(totalWidth - 1, minCount, maxCount);
+    }
+
+    function findTileProps({ height, width }) {
+        const colProps = findColumnProps(width, 9, 16);
+        // allway prepare extra tiles
+        const rowCount = (Math.floor(height / colProps.width) || 0) + 1;
+
+        return {
+            tileSize: colProps.width,
+            colCount: colProps.count,
+            rowCount,
+        };
+    }
     let viewportSize = { height: 0, width: 0 };
 
     onMount(() => {
@@ -18,24 +49,19 @@
         });
     });
 
-    let sizing = { count: 0, size: 0, length: 0 };
-
-    let tiles = [];
-    let rowsCount = 0;
+    let surface;
+    let tiles;
     $: {
-        sizing = findTileSize(viewportSize.width, 9, 14);
-        rowsCount = findRowsCount(viewportSize.height, sizing.size) + 1;
-        tiles = new Array(rowsCount).fill(new Array(sizing.count));
-        console.log(sizing);
-        console.log(viewportSize.width);
+        surface = findTileProps(viewportSize);
+        tiles = new Array(surface.rowCount).fill(new Array(surface.colCount));
     }
 </script>
 
 <div
     style={`
         display: grid;
-        grid-template-columns:  repeat(${sizing.count}, ${sizing.size}px);
-        grid-template-rows:  repeat(${rowsCount}, ${sizing.size}px);
+        grid-template-columns:  repeat(${surface.colCount}, ${surface.tileSize}px);
+        grid-template-rows:  repeat(${surface.rowCount}, ${surface.tileSize}px);
     `}
 >
     {#each tiles as row, y}
