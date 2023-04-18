@@ -2,71 +2,53 @@
     import { onMount } from "svelte";
     import GiAbstract080 from "svelte-icons/gi/GiAbstract080.svelte";
 
-    function findColumnProps(totalWidth, minCount, maxCount) {
-        if (totalWidth === 0) {
-            // probably should return something else
-            return {
-                width: 0,
-                count: 0,
-                totalWidth: 0,
-            };
-        }
-        for (let count = minCount; count <= maxCount; count++) {
-            if (totalWidth % count === 0) {
-                return {
-                    width: totalWidth / count,
-                    count,
-                    totalWidth,
-                };
-            }
-        }
-        return findColumnProps(totalWidth - 1, minCount, maxCount);
-    }
+    let tiles = [];
+    let measurements = {
+        colCount: 0,
+        rowCount: 0,
+        tileSize: 0,
+    };
 
-    function findTileProps({ height, width }) {
-        const colProps = findColumnProps(width, 9, 16);
-        // allway prepare extra tiles
-        const rowCount = (Math.floor(height / colProps.width) || 0) + 1;
-
-        return {
-            tileSize: colProps.width,
-            colCount: colProps.count,
-            rowCount,
-        };
-    }
-    let viewportSize = { height: 0, width: 0 };
-
-    onMount(() => {
-        viewportSize = {
+    function layout() {
+        const surface = {
             width: document.documentElement.clientWidth,
             height: document.documentElement.clientHeight,
         };
-        window.addEventListener("resize", () => {
-            viewportSize = {
-                width: document.documentElement.clientWidth,
-                height: document.documentElement.clientHeight,
-            };
-        });
-    });
+        const min = 9;
+        const max = 14;
 
-    let surface;
-    let tiles;
-    $: {
-        surface = findTileProps(viewportSize);
-        tiles = new Array(surface.rowCount).fill(new Array(surface.colCount));
+        let areaWidth = surface.width;
+        let columnCount = min;
+        while (columnCount <= max) {
+            if (areaWidth % columnCount === 0) break;
+            columnCount++;
+            if (columnCount === max) {
+                columnCount = min;
+                areaWidth--;
+            }
+        }
+        measurements.colCount = columnCount;
+        measurements.tileSize = areaWidth / columnCount;
+        measurements.rowCount =
+            Math.floor(surface.height / measurements.tileSize) + 1;
+        tiles = new Array(measurements.rowCount).fill(new Array(columnCount));
     }
+
+    onMount(() => {
+        layout();
+        window.addEventListener("resize", layout);
+    });
 </script>
 
 <div
     style={`
         display: grid;
-        grid-template-columns:  repeat(${surface.colCount}, ${surface.tileSize}px);
-        grid-template-rows:  repeat(${surface.rowCount}, ${surface.tileSize}px);
+        grid-template-columns:  repeat(${measurements.colCount}, ${measurements.tileSize}px);
+        grid-template-rows:  repeat(${measurements.rowCount}, ${measurements.tileSize}px);
     `}
 >
     {#each tiles as row, y}
         {#each row as column, x}
-            <!-- just an exapmle for shiffling -->
             {#if (x + y) % 2 === 0}
                 <GiAbstract080 />
             {:else}
